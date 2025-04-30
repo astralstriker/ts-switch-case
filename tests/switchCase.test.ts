@@ -1,11 +1,40 @@
-import { describe, it, expect } from 'vitest';
-import { switchCase, assertUnreachable } from '../src/switchCase';
+declare const Deno: any;
+
+import {assertUnreachable, switchCase} from '../src/switchCase';
+
+// Conditional imports for Deno vs. Node.js
+const isDeno = typeof Deno !== 'undefined';
+
+let describe: any, it: any, expect: any;
+
+if (isDeno) {
+    // Deno environment
+    const {test} = Deno;
+    // @ts-ignore
+    const {assertEquals, assertThrows} = await import('std/assert');
+    describe = (name: string, fn: () => void) => {
+        console.log(`Running suite: ${name}`);
+        fn();
+    };
+    it = test;
+    expect = (value: any) => ({
+        toBe: (expected: any) => assertEquals(value, expected),
+        // @ts-ignore
+        toBeCloseTo: (expected: number, numDigits?: number) =>
+            assertEquals(Math.round(value * 100) / 100, Math.round(expected * 100) / 100),
+        toThrow: (matcher?: RegExp) => assertThrows(() => value(), Error, matcher?.source),
+    });
+} else {
+    // Node.js environment (Vitest)
+    ({describe, it, expect} = await import('vitest'));
+}
+
 
 describe('switchCase utility', () => {
     // 1. Literal type matching (string/number/symbol)
     describe('literal type matching', () => {
         it('should match string literals and return values', () => {
-            const result = switchCase('apple'  as string, {
+            const result = switchCase('apple' as string, {
                 'apple': 'This is an apple',
                 'orange': 'This is an orange',
                 'banana': 'This is a banana'
@@ -45,7 +74,7 @@ describe('switchCase utility', () => {
 
         it('should throw error when no literal matches and no default is provided', () => {
             expect(() => {
-                switchCase('pear'  as string, {
+                switchCase('pear' as string, {
                     'apple': 'This is an apple',
                     'orange': 'This is an orange'
                 });
@@ -62,7 +91,7 @@ describe('switchCase utility', () => {
         type Shape = Circle | Square | Rectangle;
 
         it('should handle discriminated unions with the correct narrowing', () => {
-            const circle = { kind: 'circle', radius: 5 } as Shape;
+            const circle = {kind: 'circle', radius: 5} as Shape;
 
             const area = switchCase(circle, 'kind', {
                 circle: (shape) => Math.PI * shape.radius ** 2,
@@ -74,7 +103,7 @@ describe('switchCase utility', () => {
         });
 
         it('should handle discriminated unions with direct values', () => {
-            const rectangle = { kind: 'rectangle', width: 10, height: 5 } as Shape;
+            const rectangle = {kind: 'rectangle', width: 10, height: 5} as Shape;
             const shapeName = switchCase(rectangle, 'kind', {
                 circle: 'Circle',
                 square: 'Square',
@@ -86,7 +115,7 @@ describe('switchCase utility', () => {
 
         it('should use default handler when no discriminator matches', () => {
             // @ts-expect-error - Intentionally using a non-existent kind for testing
-            const shape: Shape = { kind: 'triangle', base: 10, height: 5 };
+            const shape: Shape = {kind: 'triangle', base: 10, height: 5};
 
             const result = switchCase(shape, 'kind', {
                 circle: 'Circle',
@@ -99,7 +128,7 @@ describe('switchCase utility', () => {
 
         it('should throw error when no discriminator matches and no default is provided', () => {
             // @ts-expect-error - Intentionally using a non-existent kind for testing
-            const shape: Shape = { kind: 'triangle', base: 10, height: 5 };
+            const shape: Shape = {kind: 'triangle', base: 10, height: 5};
 
             expect(() => {
                 switchCase(shape, 'kind', {
@@ -148,8 +177,8 @@ describe('switchCase utility', () => {
         });
 
         it('should match literal values in complex predicate case', () => {
-            const value : string = 'test';
-            const result = switchCase(value , {
+            const value: string = 'test';
+            const result = switchCase(value, {
                 isTest: {
                     match: 'test', // Literal match
                     handler: 'It is test'
@@ -312,7 +341,7 @@ describe('switchCase utility', () => {
     // 5. Chainable builder pattern
     describe('chainable builder pattern', () => {
         it('should handle literal matching with chainable API', () => {
-            const fruit : string= 'apple';
+            const fruit: string = 'apple';
 
             const result = switchCase(fruit)
                 .case('apple', 'This is an apple')
@@ -408,8 +437,8 @@ describe('switchCase utility', () => {
 
         it('should handle null values correctly', () => {
             const result = switchCase(null, [
-                { match: (v) => v === null, handler: 'Null value' },
-                { match: (v) => v === undefined, handler: 'Undefined value' }
+                {match: (v) => v === null, handler: 'Null value'},
+                {match: (v) => v === undefined, handler: 'Undefined value'}
             ]);
 
             expect(result).toBe('Null value');
@@ -417,8 +446,8 @@ describe('switchCase utility', () => {
 
         it('should handle undefined values correctly', () => {
             const result = switchCase(undefined, [
-                { match: (v) => v === null, handler: 'Null value' },
-                { match: (v) => v === undefined, handler: 'Undefined value' }
+                {match: (v) => v === null, handler: 'Null value'},
+                {match: (v) => v === undefined, handler: 'Undefined value'}
             ]);
 
             expect(result).toBe('Undefined value');

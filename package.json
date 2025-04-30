@@ -1,6 +1,6 @@
 {
   "name": "ts-switch-case",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "A TypeScript-first switch-case utility with object-based and chainable syntax",
   "main": "dist/index.cjs",
@@ -19,7 +19,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/switchCase.ts --format cjs,esm --dts",
+    "build": "tsup index.ts --format cjs,esm --dts",
     "test": "vitest run",
     "coverage": "vitest run --coverage",
     "lint": "tsc --noEmit && eslint src",

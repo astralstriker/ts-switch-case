@@ -1,1 +1,1 @@
-export * from "./src/switchCase.ts";
+export * from "./src/switchCase";
