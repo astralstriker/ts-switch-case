@@ -1,5 +1,5 @@
-
 import { type CaseHandler, type SwitchCaseBuilder } from "./types";
+import { isCyclic } from "./utils";
 
 // Switch-case for literal types (object-based)
 export function switchCase<T extends string | number | symbol, R>(
@@ -91,6 +91,10 @@ export function switchCase<T, K extends keyof T, R>(
 
   // Boolean condition case (array-based)
   if (Array.isArray(discriminatorOrCases)) {
+    if (isCyclic(discriminatorOrCases))
+      throw new Error(
+        "Cyclic cases detected. See ts-switch-case README for handling cycles (e.g., sanitizeNode for React).",
+      );
     const cases = discriminatorOrCases;
     const defaultFn = casesOrDefault as ((val: T) => R) | undefined;
 
@@ -109,14 +113,24 @@ export function switchCase<T, K extends keyof T, R>(
 
   // Literal type or complex predicate case (object-based)
   if (typeof discriminatorOrCases === "object") {
+    if (isCyclic(discriminatorOrCases))
+      throw new Error(
+        "Cyclic cases detected. See ts-switch-case README for handling cycles (e.g., sanitizeNode for React).",
+      );
     const cases = discriminatorOrCases;
     const defaultFn = casesOrDefault as ((val: T) => R) | undefined;
     const literalHandler = cases[String(value)];
 
     if (literalHandler !== undefined) {
-      return typeof literalHandler === "function"
-        ? literalHandler()
-        : literalHandler;
+      const result =
+        typeof literalHandler === "function"
+          ? literalHandler()
+          : literalHandler;
+      if (isCyclic(result))
+        throw new Error(
+          "Cyclic result detected. See ts-switch-case README for handling cycles (e.g., sanitizeNode for React).",
+        );
+      return result;
     }
 
     for (const key of Object.keys(cases)) {
@@ -125,32 +139,55 @@ export function switchCase<T, K extends keyof T, R>(
         const match =
           typeof c.match === "function" ? c.match(value) : c.match === value;
         if (match) {
-          return typeof c.handler === "function" ? c.handler(value) : c.handler;
+          const result =
+            typeof c.handler === "function" ? c.handler(value) : c.handler;
+          if (isCyclic(result))
+            throw new Error(
+              "Cyclic result detected. See ts-switch-case README for handling cycles (e.g., sanitizeNode for React).",
+            );
+          return result;
         }
       }
     }
 
     if (defaultFn) {
-      return defaultFn(value);
+      const result = defaultFn(value);
+      if (isCyclic(result))
+        throw new Error(
+          "Cyclic result detected. See ts-switch-case README for handling cycles (e.g., sanitizeNode for React).",
+        );
+      return result;
     }
 
     throw new Error(`No matching case for value: ${JSON.stringify(value)}`);
   }
 
   // Discriminated union case
+  if (isCyclic(casesOrDefault)) throw new Error("Cyclic cases");
   const discriminator = discriminatorOrCases;
   const cases = casesOrDefault as Record<string, R | ((val: T) => R)>;
   const discriminatorValue = String(value[discriminator]);
   const handlerOrValue = cases[discriminatorValue];
 
   if (handlerOrValue !== undefined) {
-    return typeof handlerOrValue === "function"
-      ? (handlerOrValue as (val: T) => R)(value)
-      : handlerOrValue;
+    const result =
+      typeof handlerOrValue === "function"
+        ? (handlerOrValue as (val: T) => R)(value)
+        : handlerOrValue;
+    if (isCyclic(result))
+      throw new Error(
+        "Cyclic result detected. See ts-switch-case README for handling cycles (e.g., sanitizeNode for React).",
+      );
+    return result;
   }
 
   if (defaultHandler) {
-    return defaultHandler(value);
+    const result = defaultHandler(value);
+    if (isCyclic(result))
+      throw new Error(
+        "Cyclic result detected. See ts-switch-case README for handling cycles (e.g., sanitizeNode for React).",
+      );
+    return result;
   }
 
   throw new Error(

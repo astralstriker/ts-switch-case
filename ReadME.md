@@ -112,9 +112,44 @@ Compared to alternatives:
 - **vs. `switch-case`**: Supports plain values, type safety, and chainable API.
 - **vs. Native `switch`**: Returns values, enforces exhaustiveness, and supports advanced matching.
 
+## Handling Cyclic References
+
+`ts-switch-case` includes cycle detection via `isCyclic` and `logCyclicError`. If a cyclic reference is detected (e.g., in cases or results), an error is thrown with a message pointing to this section.
+
+For React applications, cyclic references often occur in `React.ReactNode` (e.g., JSX elements with internal fiber properties). To handle this, you can implement a `sanitizeNode` function to safely process nodes. Example:
+
+```typescript
+import { isValidElement } from 'react';
+import { isCyclic } from 'ts-switch-case';
+
+function sanitizeNode(node: React.ReactNode): React.ReactNode {
+  if (isValidElement(node)) {
+    const { children, ...safeProps } = node.props;
+    return { ...node, props: { ...safeProps, children: sanitizeNode(children) } };
+  }
+  if (isCyclic(node)) return '[Cyclic Node]';
+  return node;
+}
+```
+
+Use `sanitizeNode` in your `switchCase` handlers to avoid cyclic errors:
+
+```typescript
+import { switchCase } from 'ts-switch-case';
+
+const node = <div>Cyclic</div>;
+const result = switchCase(node)
+  .case(v => typeof v === 'string', v => v)
+  .default(v => sanitizeNode(v))
+  .run();
+```
+
+For non-React contexts, use `isCyclic` to check inputs and handle cycles appropriately.
+
+
 ## Setup for Development
 ```bash
-git clone https://github.com/yourname/ts-switch-case.git
+git clone https://github.com/astralstriker/ts-switch-case.git
 cd ts-switch-case
 npm install
 npm run build
