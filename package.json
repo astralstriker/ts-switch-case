@@ -1,6 +1,6 @@
 {
   "name": "ts-switch-case",
-  "version": "1.0.4",
+  "version": "1.0.4b",
   "type": "module",
   "description": "A TypeScript-first switch-case utility with object-based and chainable syntax",
   "main": "dist/index.cjs",

@@ -168,4 +168,4 @@ Contributions are welcome! Please:
 MIT License. See [LICENSE](LICENSE) for details.
 
 ## Support
-File issues at [GitHub Issues](https://github.com/yourname/ts-switch-case/issues) or contact [your.email@example.com](mailto:your.email@example.com).
+File issues at [GitHub Issues](https://github.com/astralstriker/ts-switch-case/issues) or contact [sachdeva.jai@outlook.com](mailto:sachdeva.jai@outlook.com).
