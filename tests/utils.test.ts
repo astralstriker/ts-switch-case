@@ -12,7 +12,7 @@ describe("utils", () => {
   });
 
   it("logCyclicError logs in development", () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
     logCyclicError({ id: 1 }, ["root", "self"], "Test");
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();

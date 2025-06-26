@@ -1,4 +1,14 @@
 /**
+ * Utility type to extract the variant of a discriminated union.
+ *
+ * @template T - The union type.
+ * @template K - The discriminator key.
+ * @template V - The discriminator value.
+ */
+export type VariantOf<T, K extends keyof T, V> =
+  T extends Record<K, V> ? T : never;
+
+/**
  * Represents a handler for a case in a switch-case structure.
  *
  * @template T - The type of the value being matched.
@@ -53,6 +63,51 @@ export interface SwitchCaseBuilder<
    * @returns {Remaining extends never ? R : never} - The result of the matched case or an error if cases are missing.
    */
   exhaustive: () => Remaining extends never ? R : never;
+
+  /**
+   * Executes the switch-case structure and returns the result.
+   *
+   * @returns {R} - The result of the matched case or the default handler.
+   */
+  run: () => R;
+}
+
+/**
+ * Interface for building a discriminated union switch-case structure with fluent API.
+ *
+ * @template T - The type of the value being matched.
+ * @template K - The discriminator key.
+ * @template R - The return type of the handler functions.
+ * @template Remaining - The remaining discriminator values that can be matched.
+ */
+export interface DiscriminatedUnionSwitchCaseBuilder<
+  T,
+  K extends keyof T,
+  R,
+  Remaining extends string | number | symbol = string | number | symbol,
+> {
+  /**
+   * Adds a case for a specific discriminator value.
+   *
+   * @template V - The discriminator value.
+   * @param {V} value - The discriminator value to match.
+   * @param {(val: VariantOf<T, K, V>) => R} handler - Handler for this case.
+   * @returns {DiscriminatedUnionSwitchCaseBuilder<T, K, R, Exclude<Remaining, V>>}
+   */
+  case: <V extends Remaining>(
+    value: V,
+    handler: (val: VariantOf<T, K, V>) => R,
+  ) => DiscriminatedUnionSwitchCaseBuilder<T, K, R, Exclude<Remaining, V>>;
+
+  /**
+   * Adds a default handler for unmatched cases.
+   *
+   * @param {(val: T) => R} handler - Handler for unmatched cases.
+   * @returns {DiscriminatedUnionSwitchCaseBuilder<T, K, R, never>}
+   */
+  default: (
+    handler: (val: T) => R,
+  ) => DiscriminatedUnionSwitchCaseBuilder<T, K, R, never>;
 
   /**
    * Executes the switch-case structure and returns the result.

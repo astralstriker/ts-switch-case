@@ -3,7 +3,7 @@ export function logCyclicError(
   path: string[],
   context: string,
 ): void {
-  console.error("[Cyclic Reference]", {
+  console.warn("[Cyclic Reference]", {
     timestamp: new Date().toISOString(),
     context,
     path: path.join(" -> "),
@@ -13,17 +13,25 @@ export function logCyclicError(
 
 export function isCyclic(
   obj: any,
-  seen = new WeakSet(),
-  path: string[] = ["root"],
-): boolean {
+  currentPath = new WeakSet(),
+  pathArray: any[] = [],
+  path = ["root"],
+) {
   if (obj && typeof obj === "object") {
-    if (seen.has(obj)) {
-      logCyclicError(obj, path, "Cycle detected");
+    if (currentPath.has(obj)) {
       return true;
     }
-    seen.add(obj);
+    currentPath.add(obj);
+    pathArray.push(obj);
+
     for (const key in obj) {
-      if (isCyclic(obj[key], seen, [...path, key])) return true;
+      // Create new WeakSet and populate it
+      const newPath = new WeakSet();
+      pathArray.forEach((item) => newPath.add(item));
+
+      if (isCyclic(obj[key], newPath, [...pathArray], [...path, key])) {
+        return true;
+      }
     }
   }
   return false;
