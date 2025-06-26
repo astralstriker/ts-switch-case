@@ -1,6 +1,7 @@
 import { type CaseHandler, type SwitchCaseBuilder } from "./types";
 import { isCyclic } from "./utils";
-
+//Chainable discriminated union builder overload
+import type { DiscriminatedUnionSwitchCaseBuilder } from "./types";
 // Switch-case for literal types (object-based)
 export function switchCase<T extends string | number | symbol, R>(
   value: T,
@@ -42,6 +43,17 @@ export function switchCase<T extends string | number | symbol, R>(
 
 export function switchCase<T, R>(value: T): SwitchCaseBuilder<T, R, never>;
 
+//
+export function switchCase<T, K extends keyof T, R>(
+  value: T,
+  discriminator: K,
+): DiscriminatedUnionSwitchCaseBuilder<
+  T,
+  K,
+  R,
+  T[K] & (string | number | symbol)
+>;
+
 // Implementation
 export function switchCase<T, K extends keyof T, R>(
   value: T,
@@ -51,7 +63,10 @@ export function switchCase<T, K extends keyof T, R>(
     | Array<{ match: (val: T) => boolean; handler: R | ((val: T) => R) }>,
   casesOrDefault?: Record<string, any> | ((val: T) => R),
   defaultHandler?: (val: T) => R,
-): R | SwitchCaseBuilder<T, R, any> {
+):
+  | R
+  | SwitchCaseBuilder<T, R, any>
+  | DiscriminatedUnionSwitchCaseBuilder<T, K, R, any> {
   // Chainable syntax
   if (discriminatorOrCases === undefined) {
     const cases: Array<{ match: any; handler: R | ((val: T) => R) }> = [];
@@ -87,6 +102,78 @@ export function switchCase<T, K extends keyof T, R>(
     };
 
     return builder;
+  }
+
+  // Chainable discriminated union builder
+  if (
+    typeof discriminatorOrCases === "string" ||
+    typeof discriminatorOrCases === "number" ||
+    typeof discriminatorOrCases === "symbol"
+  ) {
+    const discriminator = discriminatorOrCases as K;
+    type DiscriminatorValue = T[K] & (string | number | symbol);
+
+    function createDiscriminatedUnionBuilder<
+      TFull,
+      KFull extends keyof TFull,
+      RFull,
+      RemainingFull extends string | number | symbol,
+    >(
+      value: TFull,
+      discriminator: KFull,
+    ): DiscriminatedUnionSwitchCaseBuilder<TFull, KFull, RFull, RemainingFull> {
+      const handlers = new Map<DiscriminatorValue, (val: any) => RFull>();
+      let defaultFn: ((val: TFull) => RFull) | undefined;
+
+      function caseFn<V extends RemainingFull>(
+        valueKey: V,
+        handler: (val: import("./types").VariantOf<TFull, KFull, V>) => RFull,
+      ) {
+        handlers.set(
+          valueKey as DiscriminatorValue,
+          handler as (val: any) => RFull,
+        );
+        return builder as any;
+      }
+
+      function defaultFnSetter(handler: (val: TFull) => RFull) {
+        defaultFn = handler;
+        return builder as any;
+      }
+
+      function run() {
+        const discriminatorValue = value[discriminator] as DiscriminatorValue;
+        if (handlers.has(discriminatorValue)) {
+          return handlers.get(discriminatorValue)!(value);
+        }
+        if (defaultFn) {
+          return defaultFn(value);
+        }
+        throw new Error(
+          `No matching case for ${String(discriminator)}: ${String(discriminatorValue)}`,
+        );
+      }
+
+      const builder = {
+        case: caseFn,
+        default: defaultFnSetter,
+        run,
+      };
+
+      return builder as DiscriminatedUnionSwitchCaseBuilder<
+        TFull,
+        KFull,
+        RFull,
+        RemainingFull
+      >;
+    }
+
+    return createDiscriminatedUnionBuilder<
+      T,
+      K,
+      R,
+      T[K] & (string | number | symbol)
+    >(value, discriminator);
   }
 
   // Boolean condition case (array-based)
